@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chinese Luxury Brand Internationalization Survey</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --ink:#17141d; --muted:#706a78; --purple:#4b168c; --magenta:#bf0058; --bg:#f7f5f9; --panel:#fff; --line:#ded6e8; --soft:#f2edf8; --green:#0f766e; --red:#b42318; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family:Calibri, Arial, "Microsoft YaHei", sans-serif; }
+    .wrap { width:min(960px,100%); margin:0 auto; padding:18px; }
+    .top { position:sticky; top:0; z-index:10; background:rgba(247,245,249,.96); border-bottom:1px solid var(--line); backdrop-filter:blur(8px); }
+    .bar { height:8px; border-radius:999px; background:#e8e1ef; overflow:hidden; }
+    #progress { height:100%; width:0%; background:linear-gradient(90deg,var(--purple),var(--magenta)); transition:.2s; }
+    .meta { display:flex; justify-content:space-between; color:var(--muted); font-size:13px; margin-top:8px; }
+    .screen { display:none; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:26px; margin-top:18px; box-shadow:0 14px 36px rgba(75,22,140,.08); }
+    .screen.active { display:block; }
+    h1 { margin:0 0 10px; color:var(--purple); font-size:34px; line-height:1.12; }
+    h2 { margin:0 0 10px; color:var(--purple); font-size:25px; }
+    h3 { margin:18px 0 8px; color:var(--magenta); font-size:18px; }
+    p { line-height:1.55; margin:8px 0; }
+    .muted { color:var(--muted); }
+    .hero { border-radius:18px; padding:28px; background:linear-gradient(135deg,#4b168c,#98106a); color:#fff; }
+    .hero h1 { color:#fff; max-width:780px; }
+    .hero p { color:#f7eefb; max-width:780px; }
+    .badge { display:inline-block; background:var(--soft); color:var(--purple); border-radius:999px; padding:6px 10px; font-weight:700; font-size:13px; margin-bottom:12px; }
+    .lang-grid, .brand-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:14px; }
+    .lang, .brand, .option { border:1px solid var(--line); background:#fff; border-radius:14px; padding:13px; cursor:pointer; }
+    .lang { text-align:left; padding:16px; }
+    .lang strong { display:block; color:var(--purple); font-size:20px; margin-bottom:5px; }
+    .brand { min-height:268px; display:flex; flex-direction:column; justify-content:space-between; gap:10px; position:relative; transition:.15s; overflow:hidden; }
+    .brand:hover { transform:translateY(-1px); border-color:var(--purple); box-shadow:0 8px 18px rgba(75,22,140,.08); }
+    .brand input { position:absolute; top:12px; left:12px; }
+    .brand-logo { height:46px; display:flex; align-items:center; justify-content:center; border-radius:12px; background:#fff; border:1px solid #eee8f5; margin-left:24px; padding:8px; }
+    .brand-logo img { max-width:100%; max-height:30px; object-fit:contain; }
+    .brand-logo .wordmark { color:var(--purple); font-size:20px; font-weight:900; letter-spacing:.02em; }
+    .brand-logo img + .wordmark { display:none; }
+    .brand-visual { height:150px; border-radius:12px; overflow:hidden; background:linear-gradient(135deg,#fbf9fd,#f1ecf7); display:flex; align-items:center; justify-content:center; position:relative; }
+    .brand-visual img { width:100%; height:100%; object-fit:contain; display:block; }
+    .brand-visual .visual-fallback { padding:12px; text-align:center; color:var(--purple); font-weight:800; line-height:1.25; }
+    .brand-visual img + .visual-fallback { display:none; }
+    .brand-name { font-weight:800; text-align:center; line-height:1.2; }
+    .brand-classic { color:var(--muted); font-size:12px; text-align:center; line-height:1.3; min-height:30px; }
+    .brand-source { color:var(--purple); font-size:11px; text-align:center; text-decoration:none; font-weight:700; overflow-wrap:anywhere; line-height:1.25; }
+    .logic { background:#fbf9fd; border:1px solid var(--line); border-radius:14px; padding:14px; margin:14px 0; }
+    .field { margin:15px 0; }
+    label { display:block; font-weight:700; margin-bottom:7px; }
+    input[type=text], select, textarea { width:100%; border:1px solid #cec4dc; border-radius:12px; padding:12px; font:inherit; background:#fff; }
+    textarea { min-height:86px; resize:vertical; }
+    .options { display:grid; gap:9px; margin-top:8px; }
+    .option { display:flex; gap:10px; align-items:flex-start; }
+    .option input, .brand input { margin-top:3px; }
+    .scenario { border:1px solid var(--line); border-radius:16px; padding:18px; background:linear-gradient(180deg,#fff,#fbf9fd); margin:18px 0; }
+    .scenario-head { display:grid; gap:16px; }
+    .placeholder { flex:0 0 230px; min-height:170px; border:2px dashed #b8abd0; border-radius:14px; background:#faf8fd; color:var(--muted); display:flex; align-items:center; justify-content:center; text-align:center; padding:14px; font-size:14px; }
+    .scenario-media { border:1px solid var(--line); border-radius:14px; overflow:hidden; background:#fff; }
+    .scenario-media-frame { min-height:280px; aspect-ratio:16/9; background:#17141d; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+    .scenario-media-frame iframe { width:100%; height:100%; border:0; background:#17141d; }
+    .scenario-media-frame video { width:100%; height:100%; object-fit:contain; background:#17141d; display:block; }
+    .video-poster { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; text-align:center; color:#fff; background:linear-gradient(135deg,#4b168c,#bf0058); }
+    .play-mark { width:64px; height:64px; border-radius:50%; background:rgba(255,255,255,.92); color:var(--purple); display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:900; margin:0 auto 12px; }
+    .video-action { display:inline-block; margin-top:12px; border-radius:999px; padding:9px 14px; background:#fff; color:var(--purple); text-decoration:none; font-weight:900; }
+    .scenario-media-frame img { width:100%; height:100%; object-fit:contain; display:block; }
+    .media-fallback { padding:14px; color:var(--purple); font-weight:800; text-align:center; line-height:1.35; }
+    .scenario-media-frame img + .media-fallback { display:none; }
+    .media-caption { padding:10px 12px 4px; color:var(--ink); font-weight:800; line-height:1.3; }
+    .media-source { display:block; padding:0 12px 12px; color:var(--purple); font-size:11px; font-weight:700; overflow-wrap:anywhere; text-decoration:none; line-height:1.3; }
+    .scenario-copy { flex:1 1 360px; }
+    .scenario-title { color:var(--purple); font-weight:800; font-size:20px; margin-bottom:6px; }
+    .scale-row { border-top:1px solid #ece6f3; padding-top:12px; margin-top:12px; }
+    .prompt { font-weight:700; margin-bottom:7px; }
+    .scale { display:grid; grid-template-columns:repeat(7,1fr); gap:7px; }
+    .scale input { display:none; }
+    .scale span { min-height:38px; display:flex; align-items:center; justify-content:center; border:1px solid #cfc5df; border-radius:10px; background:#fff; cursor:pointer; font-weight:700; }
+    .scale input:checked + span { background:var(--purple); color:#fff; border-color:var(--purple); }
+    .scale-help { display:flex; justify-content:space-between; color:var(--muted); font-size:12px; margin-top:4px; }
+    .sortable { display:grid; gap:10px; margin-top:14px; }
+    .drag-card { border:1px solid var(--line); background:#fff; border-radius:14px; padding:13px; cursor:grab; display:flex; gap:12px; align-items:center; }
+    .drag-card.dragging { opacity:.55; }
+    .handle { color:var(--purple); font-weight:900; font-size:18px; }
+    .channel-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:10px; }
+    .channel { border:1px solid var(--line); background:#fff; border-radius:14px; padding:12px; display:flex; gap:10px; align-items:flex-start; cursor:pointer; }
+    .channel input { margin-top:3px; }
+    .btns { display:flex; gap:10px; justify-content:space-between; flex-wrap:wrap; margin:20px 0 0; }
+    button { border:0; border-radius:12px; padding:12px 16px; font:inherit; font-weight:800; cursor:pointer; }
+    .primary { background:var(--purple); color:#fff; }
+    .secondary { background:#eae3f3; color:var(--purple); }
+    .ghost { background:#fff; border:1px solid var(--line); color:var(--muted); }
+    .status { border-radius:12px; padding:12px; margin-top:12px; display:none; }
+    .status.ok { display:block; background:#ecfdf5; color:var(--green); border:1px solid #a7f3d0; }
+    .status.err { display:block; background:#fef3f2; color:var(--red); border:1px solid #fecaca; }
+    .validation-message { border-radius:12px; padding:12px; margin-top:14px; background:#fef3f2; color:var(--red); border:1px solid #fecaca; font-weight:700; }
+    .invalid-field { outline:2px solid #f87171; outline-offset:3px; border-radius:12px; }
+    .ai-tools { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0; }
+    .ai-suggestion { border:1px solid var(--line); border-radius:14px; background:#fbf9fd; padding:13px; color:var(--ink); line-height:1.55; margin-top:10px; white-space:pre-wrap; }
+    .mini-note { color:var(--muted); font-size:12px; line-height:1.4; }
+    .hidden { display:none !important; }
+    @media (max-width:760px) { .wrap { padding:14px; } .screen { padding:18px; } h1 { font-size:28px; } .lang-grid,.brand-grid,.channel-grid { grid-template-columns:1fr; } .scale { gap:5px; } .placeholder,.scenario-media { flex-basis:100%; } .scenario-media-frame { min-height:220px; } }
+  </style>
+</head>
+<body>
+  <div class="top"><div class="wrap"><div class="bar"><div id="progress"></div></div><div class="meta"><span id="stepLabel">Step</span><span id="timeLabel">7-9 min</span></div></div></div>
+  <main class="wrap" id="app"></main>
+
+<script>
+const SUPABASE_URL = "https://ygcumavircsafykpivby.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnY3VtYXZpcmNzYWZ5a3BpdmJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMjE5MDMsImV4cCI6MjA5NzY5NzkwM30.MMz2nHFoWiyuLUgWGD3U9odn8aFY7blZqws70Cw1MMc";
+const SUPABASE_TABLE = "luxury_survey_responses";
+const AI_HELP_ENDPOINT = "";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const T = {
+ zh: {
+  name:"中文", step:"步骤", time:"约 7-9 分钟", back:"返回", next:"下一步", finish:"提交", reset:"重置",
+  langTitle:"请选择问卷语言", title:"中国奢侈品牌国际化：文化符号如何转化为跨文化品牌价值",
+  subtitle:"这份问卷研究中国本土奢侈/高端品牌如何把中国文化符号，通过产品、视觉、故事和传播内容，转译成海外消费者能够理解并认可的奢侈品牌价值。",
+  logic:"你会先选择受访者类型，然后选择你认识的中国品牌，再观看五种文化表达路径的品牌案例。请重点判断：这些表达是否清楚、真实、有奢侈感，以及是否完成了从“中国文化符号”到“国际品牌语言”的文化翻译。",
+  profile:"A. 受访者背景", group:"你属于哪一类受访者？", china:"中国人，生活在中国", overseas:"中国人，生活在海外", foreign:"外国人 / 非华裔消费者", country:"当前居住国家", overseasDuration:"你在海外生活了多久？", age:"年龄", luxury:"过去 12 个月内，你是否购买或考虑过奢侈/高端时尚、珠宝、配饰、香氛或生活方式产品？", yes:"是", no:"否", unsure:"不确定",
+  brands:"B. 你认识哪些中国本土高端/奢侈品牌？", brandsHint:"请选择你听说过的品牌。最后有一个输入框，可以补充其他品牌。", otherBrands:"你还知道哪些中国本土高端/奢侈品牌？",
+  evalTitle:"C. 文化符号如何被转译为奢侈品牌价值？", evalHint:"请查看每一项视频/案例刺激材料，并把它想象成一个中国品牌用于海外市场的产品页、短视频、社交媒体内容或广告。我们不是只测试你是否喜欢这个元素，而是测试它是否完成了有效的跨文化品牌翻译。",
+  imageSlot:"案例展示", sourceLabel:"来源 / 案例", low:"非常不同意", high:"非常同意",
+  qChinese:"这种表达让我清楚感受到品牌的中国文化身份。", qUnderstand:"即使不解释很多背景，我也能理解这个品牌/产品想表达什么。", qTranslate:"这种表达把中国文化转化成了国际消费者也能理解的品牌语言。", qLuxury:"这种表达让我觉得品牌更高级/更有奢侈感。", qAuthentic:"这种表达显得真实自然，而不是刻意贴标签。", qInternational:"这种表达适合用于海外市场传播。", qInterest:"这种表达会让我想进一步了解这个品牌。",
+  channels:"D. 哪些传播方式最能完成“文化翻译”？", channelsHint:"这一部分把产品设计与国际传播连接起来：同样的中国文化表达，只有通过合适的叙事、渠道和语境解释，才可能被海外消费者理解。请选择你认为最有助于文化翻译的方式，可多选。",
+  ranking:"E. 拖拽排序", rankingHint:"请拖拽排序：哪种文化表达路径最有可能把中国文化符号转化为海外市场认可的奢侈品牌价值？最上面 = 最有潜力。", 
+  accTitle:"F. 分组补充问题：文化身份、文化翻译与受众差异", accHint:"这一部分会根据你的受访者类型显示不同问题，用来比较三类人如何判断中国品牌在“保留文化身份”和“让海外市场理解”之间的平衡。",
+  fHintChina:"这组问题关注中国本土消费者如何判断文化身份是否被保留，以及哪些表达会被认为高级、真实、适合代表中国品牌出海。", fHintOverseas:"这组问题关注海外中国人是否因为双文化经验，能够在中国文化语境与海外消费语境之间承担文化翻译桥梁角色。", fHintForeign:"这组问题关注非华裔海外消费者能否解读中国文化表达，以及什么样的解释、故事和视觉语言会提升接受度。",
+  acc1:"我熟悉中国文化符号和中国品牌表达。", acc2:"我熟悉当前居住国消费者的审美和营销偏好。", acc3:"我能判断哪些中国文化表达外国人容易理解。", acc4:"我认为中国品牌出海时需要对中国文化进行翻译，而不是直接搬运。", acc5:"我更偏好含蓄、现代的中国文化表达，而不是非常直接的中国符号。",
+  finalTitle:"G. 最后一个问题", finalOpen:"如果你给中国奢侈/高端品牌一个出海建议，它应该如何把中国文化符号翻译成国际消费者能理解、同时仍然有高级感和真实感的品牌语言？（选填）",
+  aiHelp:"没思路？帮我生成一个回答方向", aiInsert:"插入到回答框", aiThinking:"正在生成回答方向...", aiNote:"这只是启发提示，你可以修改、删减或不用。提交时会记录是否使用过这个辅助。", aiFallback:"中国品牌出海时，可以先保留真实的文化来源，例如工艺、材质、审美或生活方式，再用国际消费者容易理解的产品语言解释它。相比直接堆砌符号，更重要的是让文化表达服务于产品品质、品牌故事和使用场景。",
+  validationRequired:"请先完成本页所有必答问题，再进入下一部分。", validationBrand:"请至少选择一个你认识的品牌，或在“其他品牌”中填写一个品牌。", submit:"提交结果", saved:"提交成功，谢谢！", failed:"提交失败：", submitting:"正在提交..."
+ },
+ en: {
+  name:"English", step:"Step", time:"Approx. 7-9 min", back:"Back", next:"Next", finish:"Submit", reset:"Reset",
+  langTitle:"Choose survey language", title:"Chinese Luxury Brand Internationalization: Translating Cultural Symbols into Cross-Cultural Brand Value",
+  subtitle:"This survey studies how Chinese premium/luxury brands translate Chinese cultural symbols through product, visual, story and communication content into luxury brand value that overseas consumers can understand and accept.",
+  logic:"You will first select your respondent group, then choose the Chinese brands you know, and finally evaluate five cultural-expression pathways through brand cases. Please focus on whether each case is clear, authentic, luxurious and whether it translates Chinese cultural symbols into an international brand language.",
+  profile:"A. Respondent background", group:"Which group best describes you?", china:"Chinese person living in China", overseas:"Chinese person living overseas", foreign:"Foreigner / non-Chinese consumer", country:"Current country of residence", overseasDuration:"How long have you lived overseas?", age:"Age group", luxury:"In the past 12 months, have you purchased or considered luxury/premium fashion, jewellery, accessories, fragrance or lifestyle products?", yes:"Yes", no:"No", unsure:"Not sure",
+  brands:"B. Which Chinese premium/luxury brands do you know?", brandsHint:"Select the brands you have heard of. Use the text box to add any others.", otherBrands:"Other Chinese premium/luxury brands you know",
+  evalTitle:"C. How are cultural symbols translated into luxury brand value?", evalHint:"Look at each video/case stimulus and imagine it as a product page, short video, social media post or advertisement used by a Chinese brand overseas. This is not only about liking the element; it is about whether the expression performs effective cross-cultural brand translation.",
+  imageSlot:"Case display", sourceLabel:"source / case", low:"Strongly disagree", high:"Strongly agree",
+  qChinese:"This expression clearly communicates the brand's Chinese cultural identity.", qUnderstand:"Even without much background explanation, I can understand what the brand/product is trying to express.", qTranslate:"This expression translates Chinese culture into a brand language that international consumers can understand.", qLuxury:"This expression makes the brand feel more premium/luxurious.", qAuthentic:"This expression feels authentic rather than forced.", qInternational:"This expression is suitable for overseas market communication.", qInterest:"This expression makes me want to learn more about the brand.",
+  channels:"D. Which communication methods best perform cultural translation?", channelsHint:"This section connects product design with international communication: the same Chinese cultural expression needs the right narrative, channel and contextual explanation to become understandable overseas. Select all methods you consider effective.",
+  ranking:"E. Drag-and-drop ranking", rankingHint:"Drag to rank which cultural-expression pathway is most likely to turn Chinese cultural symbols into luxury brand value accepted by overseas markets. Top = highest potential.",
+  accTitle:"F. Group-specific questions: cultural identity, translation and audience differences", accHint:"This section changes by respondent group so the study can compare how the three groups judge the balance between keeping cultural identity and being understood overseas.",
+  fHintChina:"These questions examine how China-based Chinese consumers judge whether cultural identity is preserved and which expressions feel premium, authentic and suitable to represent Chinese brands overseas.", fHintOverseas:"These questions examine whether overseas Chinese consumers, through bicultural experience, can act as cultural translation bridges between Chinese cultural context and overseas consumer context.", fHintForeign:"These questions examine whether non-Chinese overseas consumers can decode Chinese cultural expression and what explanations, stories and visual languages increase acceptance.",
+  acc1:"I am familiar with Chinese cultural symbols and Chinese brand expression.", acc2:"I understand the aesthetic and marketing preferences of consumers in my current country of residence.", acc3:"I can judge which Chinese cultural expressions are easy for foreigners to understand.", acc4:"I think Chinese brands need to translate Chinese culture for overseas markets rather than transfer it directly.", acc5:"I prefer subtle and modern Chinese cultural expression rather than very direct Chinese symbols.",
+  finalTitle:"G. Final question", finalOpen:"If you could give one recommendation to a Chinese luxury/premium brand going overseas, how should it translate Chinese cultural symbols into a brand language that international consumers can understand while still feeling premium and authentic? Optional.",
+  aiHelp:"Need ideas? Generate an answer direction", aiInsert:"Insert into answer box", aiThinking:"Generating an answer direction...", aiNote:"This is only a prompt. You can edit, shorten or ignore it. The survey records whether this helper was used.", aiFallback:"Chinese brands going overseas can keep a real cultural source, such as craft, material, aesthetics or lifestyle, and then explain it through product language that international consumers can understand. Instead of stacking obvious symbols, cultural expression should support product quality, brand story and use occasion.",
+  validationRequired:"Please complete all required questions on this page before continuing.", validationBrand:"Please select at least one brand you know, or type one brand in the other-brands field.", submit:"Submit response", saved:"Submitted successfully. Thank you.", failed:"Submission failed: ", submitting:"Submitting..."
+ },
+ fr: {
+  name:"Français", step:"Étape", time:"Environ 7-9 min", back:"Retour", next:"Suivant", finish:"Envoyer", reset:"Réinitialiser",
+  langTitle:"Choisissez la langue du questionnaire", title:"Internationalisation des marques de luxe chinoises : traduire les symboles culturels en valeur de marque interculturelle",
+  subtitle:"Ce questionnaire étudie comment les marques chinoises premium/luxe traduisent les symboles culturels chinois, par le produit, le visuel, le récit et la communication, en valeur de marque de luxe compréhensible et acceptable à l'étranger.",
+  logic:"Vous choisirez d'abord votre groupe, puis les marques chinoises que vous connaissez, puis vous évaluerez cinq voies d'expression culturelle à partir de cas de marque. Concentrez-vous sur la clarté, l'authenticité, la valeur luxe et la capacité à traduire les symboles culturels chinois en langage de marque international.",
+  profile:"A. Profil du répondant", group:"Quel groupe vous décrit le mieux ?", china:"Personne chinoise vivant en Chine", overseas:"Personne chinoise vivant à l'étranger", foreign:"Étranger / consommateur non chinois", country:"Pays de résidence actuel", overseasDuration:"Depuis combien de temps vivez-vous à l'étranger ?", age:"Tranche d'âge", luxury:"Au cours des 12 derniers mois, avez-vous acheté ou envisagé d'acheter des produits de luxe/premium mode, joaillerie, accessoires, parfum ou lifestyle ?", yes:"Oui", no:"Non", unsure:"Je ne sais pas",
+  brands:"B. Quelles marques chinoises premium/luxe connaissez-vous ?", brandsHint:"Sélectionnez les marques que vous connaissez. Ajoutez d'autres marques dans le champ texte.", otherBrands:"Autres marques chinoises premium/luxe que vous connaissez",
+  evalTitle:"C. Comment les symboles culturels deviennent-ils une valeur de marque de luxe ?", evalHint:"Regardez chaque stimulus vidéo/cas et imaginez-le comme une page produit, une vidéo courte, un post social media ou une publicité utilisée par une marque chinoise à l'étranger. Il ne s'agit pas seulement d'aimer l'élément, mais d'évaluer si l'expression fonctionne comme traduction interculturelle de marque.",
+  imageSlot:"Cas visuel", sourceLabel:"source / cas", low:"Pas du tout d'accord", high:"Tout à fait d'accord",
+  qChinese:"Cette expression communique clairement l'identité culturelle chinoise de la marque.", qUnderstand:"Même sans beaucoup d'explications, je comprends ce que la marque/le produit cherche à exprimer.", qTranslate:"Cette expression traduit la culture chinoise en un langage de marque compréhensible par des consommateurs internationaux.", qLuxury:"Cette expression rend la marque plus premium/luxueuse.", qAuthentic:"Cette expression semble authentique plutôt que forcée.", qInternational:"Cette expression convient à une communication internationale.", qInterest:"Cette expression me donne envie d'en savoir plus sur la marque.",
+  channels:"D. Quelles méthodes de communication traduisent le mieux la culture ?", channelsHint:"Cette partie relie design produit et communication internationale : une même expression culturelle chinoise a besoin du bon récit, canal et contexte pour être comprise à l'étranger. Sélectionnez toutes les méthodes efficaces.",
+  ranking:"E. Classement par glisser-déposer", rankingHint:"Glissez pour classer quelle voie d'expression culturelle peut le mieux transformer les symboles culturels chinois en valeur de marque de luxe acceptée à l'étranger. En haut = potentiel le plus fort.",
+  accTitle:"F. Questions par groupe : identité culturelle, traduction et différences d'audience", accHint:"Cette section change selon le groupe afin de comparer comment les trois publics jugent l'équilibre entre identité culturelle et compréhension internationale.",
+  fHintChina:"Ces questions étudient comment les consommateurs chinois vivant en Chine jugent la préservation de l'identité culturelle et les expressions premium, authentiques et représentatives.", fHintOverseas:"Ces questions étudient si les Chinois vivant à l'étranger peuvent, grâce à leur expérience biculturelle, jouer un rôle de pont de traduction culturelle.", fHintForeign:"Ces questions étudient si les consommateurs étrangers non chinois peuvent décoder l'expression culturelle chinoise et quels récits, explications et langages visuels augmentent l'acceptation.",
+  acc1:"Je connais les symboles culturels chinois et l'expression des marques chinoises.", acc2:"Je comprends les préférences esthétiques et marketing des consommateurs dans mon pays de résidence.", acc3:"Je peux juger quelles expressions culturelles chinoises sont faciles à comprendre pour les étrangers.", acc4:"Je pense que les marques chinoises doivent traduire la culture chinoise pour l'étranger plutôt que la transférer directement.", acc5:"Je préfère une expression chinoise subtile et moderne plutôt que des symboles chinois très directs.",
+  finalTitle:"G. Question finale", finalOpen:"Si vous pouviez donner une recommandation à une marque chinoise luxe/premium à l'international, comment devrait-elle traduire les symboles culturels chinois en langage de marque compréhensible, premium et authentique ? Optionnel.",
+  aiHelp:"Besoin d'idées ? Générer une piste de réponse", aiInsert:"Insérer dans la réponse", aiThinking:"Génération d'une piste de réponse...", aiNote:"Ceci est seulement une aide. Vous pouvez modifier, raccourcir ou ignorer le texte. Le questionnaire indique si cette aide a été utilisée.", aiFallback:"Les marques chinoises à l'international peuvent conserver une source culturelle authentique, comme l'artisanat, la matière, l'esthétique ou le lifestyle, puis l'expliquer avec un langage produit compréhensible pour les consommateurs internationaux. Plutôt que d'accumuler des symboles évidents, l'expression culturelle doit renforcer la qualité du produit, l'histoire de marque et le contexte d'usage.",
+  validationRequired:"Veuillez compléter toutes les questions obligatoires de cette page avant de continuer.", validationBrand:"Veuillez sélectionner au moins une marque connue ou saisir une marque dans le champ autre.", submit:"Envoyer", saved:"Réponse envoyée. Merci.", failed:"Échec de l'envoi : ", submitting:"Envoi..."
+ }
+};
+
+const brands = [
+ {name:"Shang Xia 上下", mark:"SHANG XIA", logo:"https://logo.clearbit.com/shangxia.com", image:"https://www.shangxia.com/cdn/shop/files/1d8833ae68e648f529673091a24333f7.jpg?v=1732692175", classic:{zh:"蓝月包 / 竹编灵感皮革工艺", en:"Lan Yue bag / bamboo-inspired woven leather craft", fr:"Sac Lan Yue / cuir tressé inspiré du bambou"}, link:"https://www.shangxia.com/en/pages/%E4%B8%8A%E4%B8%8B%E5%B7%A5%E8%89%BA-shang-xia-craftsmanship"},
+ {name:"Songmont", mark:"Songmont", logo:"https://logo.clearbit.com/songmontofficial.com", image:"https://songmontofficial.com/cdn/shop/files/luna-bag-onyx-1.jpg?v=1755954498", classic:{zh:"Luna 包 / Journey to the East 出海传播", en:"Luna Bag / Journey to the East campaign", fr:"Sac Luna / campagne Journey to the East"}, link:"https://songmontofficial.com/en-cn/products/luna-bag-onyx"},
+ {name:"Qeelin", mark:"Qeelin", logo:"https://logo.clearbit.com/qeelin.com", image:"https://ko.marinabaysands.com/content/dam/marinabaysands/shop-detail/qeelin/qeelin-masthead-mobile-1080x1440.jpg", classic:{zh:"Wulu 葫芦珠宝", en:"Wulu gourd jewellery", fr:"Bijou Wulu inspiré de la gourde"}, link:"https://ko.marinabaysands.com/shopping/qeelin.html"},
+ {name:"Laopu Gold 老铺黄金", mark:"老铺黄金", logo:"https://logo.clearbit.com/laopugold.com", image:"https://greatnewplaces.com/wp-content/uploads/2025/07/GNP-Post-Laopugold01-1024x1024.jpg", classic:{zh:"古法黄金 / 祥瑞金器", en:"Ancient-method gold / auspicious gold jewellery", fr:"Or artisanal ancien / joaillerie porte-bonheur"}, link:"https://greatnewplaces.com/stores/laopu-gold/"},
+ {name:"Shanghai Tang 上海滩", mark:"SHANGHAI TANG", logo:"https://logo.clearbit.com/shanghaitang.com", image:"https://www.optionstheedge.com/sites/default/files/assets/2024/year_of_the_dragon_silk_knot_clutch.jpg", classic:{zh:"旗袍、龙纹与春节系列", en:"Qipao, dragon motifs and Lunar New Year collections", fr:"Qipao, motifs dragon et collections du Nouvel An lunaire"}, link:"https://www.optionstheedge.com/topic/style/jacky-tsai-and-shanghai-tang-team-special-collection-usher-cny-2024"},
+ {name:"Icicle 之禾", mark:"ICICLE", logo:"https://logo.clearbit.com/icicle.com.cn", image:"https://backend.icicle.com.cn/img/bc4ca1c1-54fa-4a8a-91d6-69b1062473c7/ss26-campaign-16-9-no-logo-lr-1.jpg?dpr=1&last=1776342821084&q=90&w=500", classic:{zh:"天然材质与极简成衣", en:"Minimal natural-fiber ready-to-wear", fr:"Pret-a-porter minimaliste en fibres naturelles"}, link:"https://www.icicle.com.cn/cn/ss24-lookbook-women/"},
+ {name:"To Summer 观夏", mark:"观夏", logo:"https://logo.clearbit.com/tosummer.shop", image:"https://tosummer.shop/cdn/shop/files/to-summer-475-mansion-vintage-perfume.webp?v=1767850517&width=900", classic:{zh:"东方香氛 / 475 Mansion 香水", en:"Eastern fragrance / 475 Mansion perfume", fr:"Parfum oriental / 475 Mansion"}, link:"https://tosummer.shop/products/475mansionperfume"},
+ {name:"Uma Wang", mark:"UMA WANG", logo:"https://logo.clearbit.com/umawang.com", image:"https://p5.itc.cn/q_70/images03/20221130/78c3c8e8bbc744df820c7179a54f8316.jpeg", classic:{zh:"大地色系与国际秀场廓形", en:"Earth-toned global runway silhouettes", fr:"Silhouettes de defile aux tons terreux"}, link:"https://www.sohu.com/a/611726392_559321"},
+ {name:"Ms Min", mark:"MS MIN", logo:"https://logo.clearbit.com/msmin.com", image:"https://msmin.com/uploadfiles/Collections/20200930/20200930041543188p2_View.jpg", classic:{zh:"精致女性化剪裁", en:"Refined feminine tailoring", fr:"Tailoring feminin raffine"}, link:"https://msmin.com/collection.aspx?ID=157"},
+ {name:"Comme Moi", mark:"COMME MOI", logo:"https://logo.clearbit.com/commemoi.com", image:"https://shfashionweek.oss-cn-shanghai.aliyuncs.com/shfw/dev/articles/content/2022/11/17/6YwWBsayBx.png", classic:{zh:"都市剪裁 / 现代中国设计师品牌", en:"Urban tailoring / modern Chinese designer brand", fr:"Tailoring urbain / marque chinoise contemporaine"}, link:"https://www.shanghaifashionweek.com/page/shfw/news/657"},
+ {name:"Shushu/Tong", mark:"SHUSHU/TONG", logo:"https://logo.clearbit.com/shushutongstudio.com", image:"https://www.mytheresa.com/media/1094/1238/100/ec/P01142466.jpg", classic:{zh:"蝴蝶结细节与少女感剪裁", en:"Bow-detail dresses and playful tailoring", fr:"Robes a noeuds et tailoring ludique"}, link:"https://www.mytheresa.com/nl/en/women/shushu-tong-bow-detail-wool-and-silk-midi-dress-blue-p01142466"},
+ {name:"Susan Fang", mark:"SUSAN FANG", logo:"https://logo.clearbit.com/susanfangofficial.com", image:"https://is4.revolveassets.com/images/p4/n/uv/SFAN-WY6_V1.jpg", classic:{zh:"Air-flower 与透明珠饰包", en:"Air-flower / beaded transparent bag", fr:"Air-flower / sac transparent perle"}, link:"https://www.revolve.com/susan-fang-crochet-beaded-mini-bag-in-pink/dp/SFAN-WY6/"}
+];
+const durationOptions = [
+ {value:"less_than_1_year", zh:"少于 1 年", en:"Less than 1 year", fr:"Moins d'un an"},
+ {value:"1_3_years", zh:"1-3 年", en:"1-3 years", fr:"1-3 ans"},
+ {value:"4_6_years", zh:"4-6 年", en:"4-6 years", fr:"4-6 ans"},
+ {value:"7_10_years", zh:"7-10 年", en:"7-10 years", fr:"7-10 ans"},
+ {value:"more_than_10_years", zh:"10 年以上", en:"More than 10 years", fr:"Plus de 10 ans"}
+];
+const channels = [
+ {id:"craft_process", zh:"展示工艺过程，让文化来源可见", en:"Showing the craft process so the cultural source becomes visible", fr:"Montrer le processus artisanal pour rendre la source culturelle visible"},
+ {id:"context_story", zh:"用短故事解释文化来源和当代意义", en:"Using short stories to explain cultural origins and contemporary meaning", fr:"Utiliser des récits courts pour expliquer l'origine culturelle et le sens contemporain"},
+ {id:"product_detail", zh:"通过材质、结构、细节说明文化如何进入产品", en:"Explaining how culture enters the product through material, structure and details", fr:"Expliquer comment la culture entre dans le produit par les matières, la structure et les détails"},
+ {id:"visual_campaign", zh:"用国际化广告片/短视频完成视觉转译", en:"Using international campaigns or short videos for visual translation", fr:"Utiliser des campagnes internationales ou vidéos courtes pour la traduction visuelle"},
+ {id:"retail_experience", zh:"通过门店、展览、快闪创造可体验的文化语境", en:"Creating experiential cultural context through stores, exhibitions and pop-ups", fr:"Créer un contexte culturel expérientiel par boutiques, expositions et pop-ups"},
+ {id:"cultural_intermediary", zh:"通过海外华人、策展人、KOL 或本地媒体进行解释", en:"Using overseas Chinese, curators, KOLs or local media as cultural intermediaries", fr:"Utiliser Chinois d'outre-mer, curateurs, KOL ou médias locaux comme intermédiaires culturels"},
+ {id:"minimal_translation", zh:"减少直白符号，只保留含蓄的中国气质", en:"Reducing explicit symbols and keeping subtle Chinese sensibility", fr:"Réduire les symboles explicites et garder une sensibilité chinoise subtile"}
+];
+const expressions = [
+ {id:"craft", title:{zh:"传统工艺/材质符号",en:"Craft and material symbols",fr:"Symboles d'artisanat et de matière"}, product:{zh:"视频刺激：请重点观察工艺过程是否能让文化表达显得真实、高级，而不是单纯贴符号。",en:"Video stimulus: focus on whether the craft process makes the cultural expression feel authentic and premium rather than symbolic decoration.",fr:"Stimulus vidéo : observez si le processus artisanal rend l'expression culturelle authentique et premium plutôt que décorative."}, media:{kind:"video", local:"media/C_part_video_materials/craft_shangxia.mp4", caption:{zh:"上下 Shang Xia：工艺页面中的竹编、瓷器、漆艺与皮革编织动态案例", en:"Shang Xia: craftsmanship case page with bamboo weaving, porcelain, lacquer and leather weaving", fr:"Shang Xia : page de cas artisanat avec bambou tressé, porcelaine, laque et cuir tressé"}, source:"https://www.shangxia.com/en/pages/%E4%B8%8A%E4%B8%8B%E5%B7%A5%E8%89%BA-shang-xia-craftsmanship"} },
+ {id:"aesthetic", title:{zh:"东方审美/宋式极简",en:"Eastern aesthetics / Song-style minimalism",fr:"Esthétique orientale / minimalisme Song"}, product:{zh:"视频刺激：请重点观察留白、自然材质、低饱和色与空间感是否构成国际消费者能理解的东方高级感。",en:"Video stimulus: focus on whether blank space, natural materials, muted color and spatial restraint create an Eastern premium feeling that international consumers can understand.",fr:"Stimulus vidéo : observez si le vide, les matières naturelles, les couleurs sobres et l'espace créent un luxe oriental compréhensible."}, media:{kind:"video", local:"media/C_part_video_materials/aesthetic_icicle.mp4", caption:{zh:"之禾 ICICLE：自然材质、极简空间与东方审美的品牌动态案例", en:"ICICLE: moving brand case for natural materials, minimal space and Eastern aesthetics", fr:"ICICLE : cas dynamique autour des matières naturelles, de l'espace minimal et de l'esthétique orientale"}, source:"https://www.icicle.com.cn/cn/ss24-lookbook-women/"} },
+ {id:"lifestyle", title:{zh:"茶/香/文人生活方式",en:"Tea, incense and literati lifestyle",fr:"Thé, encens et art de vivre lettré"}, product:{zh:"视频刺激：请重点观察香氛、空间、记忆和东方生活方式叙事是否比单一产品图更容易被理解。",en:"Video stimulus: focus on whether fragrance, space, memory and Eastern lifestyle storytelling are easier to understand than a single product image.",fr:"Stimulus vidéo : observez si le parfum, l'espace, la mémoire et le lifestyle oriental sont plus compréhensibles qu'une image produit seule."}, media:{kind:"video", local:"media/C_part_video_materials/lifestyle_tosummer.mp4", clipEnd:60, caption:{zh:"观夏 To Summer：香氛与东方生活方式传播案例（1分钟）", en:"To Summer: fragrance and Eastern lifestyle communication case (1 min)", fr:"To Summer : cas de communication parfum et lifestyle oriental (1 min)"}, source:"https://www.instagram.com/tosummer_official/"} },
+ {id:"visible", title:{zh:"显性中国视觉符号",en:"Visible Chinese visual symbols",fr:"Symboles visuels chinois visibles"}, product:{zh:"视频刺激：请重点观察生肖、龙纹、红色等显性符号在传播中是增强文化识别，还是容易显得过于直接。",en:"Video stimulus: focus on whether visible symbols such as zodiac, dragon motifs and red strengthen cultural recognition or feel too direct.",fr:"Stimulus vidéo : observez si les signes visibles comme le zodiaque, le dragon et le rouge renforcent l'identification culturelle ou paraissent trop directs."}, media:{kind:"video", local:"media/C_part_video_materials/visible_shanghaitang.mp4", caption:{zh:"上海滩 Shanghai Tang：春节/生肖文化视觉传播案例", en:"Shanghai Tang: Lunar New Year / zodiac visual communication case", fr:"Shanghai Tang : cas de communication visuelle Nouvel An lunaire / zodiaque"}, source:"https://www.instagram.com/shanghaitang/"} },
+ {id:"global", title:{zh:"全球时尚化转译",en:"Global fashion translation",fr:"Traduction mode globale"}, product:{zh:"视频刺激：请重点观察品牌是否通过国际化人物、城市、镜头语言和产品场景，把中国品牌表达转译成全球时尚语言。",en:"Video stimulus: focus on whether the brand translates Chinese brand expression into global fashion language through international talent, cities, camera language and product scenes.",fr:"Stimulus vidéo : observez si la marque traduit son expression chinoise en langage mode global par les talents, la ville, l'image et les scènes produit."}, media:{kind:"video", local:"media/C_part_video_materials/global_songmont.mp4", caption:{zh:"Songmont：Journey to the East / Alexa Chung 出海传播案例", en:"Songmont: Journey to the East / Alexa Chung overseas communication case", fr:"Songmont : Journey to the East / Alexa Chung, cas de communication internationale"}, source:"https://songmontofficial.com/pages/journey-to-the-east-alexa-chung"} }
+];
+const groupQuestionSets = {
+ china: [
+  {id:"group_q1", text:{zh:"中国品牌出海时，保留清晰的中国文化身份比完全融入国际风格更重要。", en:"When Chinese brands go overseas, keeping a clear Chinese cultural identity is more important than fully blending into global style.", fr:"Pour les marques chinoises à l'international, garder une identité culturelle chinoise claire est plus important que se fondre totalement dans le style global."}},
+  {id:"group_q2", text:{zh:"我能区分哪些中国文化表达显得高级真实，哪些只是表面化使用符号。", en:"I can distinguish which Chinese cultural expressions feel premium and authentic and which are only superficial symbol use.", fr:"Je peux distinguer les expressions culturelles chinoises premium et authentiques de l'usage superficiel des symboles."}},
+  {id:"group_q3", text:{zh:"如果一个中国品牌为了让外国消费者理解而解释文化背景，我不会觉得它削弱了中国身份。", en:"If a Chinese brand explains cultural background for foreign consumers, I do not feel that it weakens its Chinese identity.", fr:"Si une marque chinoise explique son contexte culturel aux consommateurs étrangers, cela ne diminue pas son identité chinoise selon moi."}},
+  {id:"group_q4", text:{zh:"我更认可通过工艺、材质、空间和故事表达中国文化，而不是只使用龙、红色、生肖等直白符号。", en:"I value expressing Chinese culture through craft, material, space and story more than only using direct symbols such as dragons, red or zodiac signs.", fr:"Je valorise davantage l'expression par l'artisanat, les matières, l'espace et le récit que l'usage direct du dragon, du rouge ou du zodiaque."}},
+  {id:"group_q5", text:{zh:"中国消费者的文化判断可以帮助品牌决定哪些表达适合被翻译给海外市场。", en:"China-based consumers' cultural judgment can help brands decide which expressions should be translated for overseas markets.", fr:"Le jugement culturel des consommateurs chinois peut aider les marques à décider quelles expressions doivent être traduites pour l'étranger."}}
+ ],
+ overseas_chinese: [
+  {id:"group_q1", text:{zh:"我既能理解中国文化符号，也能理解当前居住国消费者可能如何解读这些符号。", en:"I can understand Chinese cultural symbols and also how consumers in my current country may interpret them.", fr:"Je peux comprendre les symboles culturels chinois ainsi que la manière dont les consommateurs de mon pays de résidence peuvent les interpréter."}},
+  {id:"group_q2", text:{zh:"我能判断一种中国文化表达在海外市场中是容易理解、需要解释，还是可能被误读。", en:"I can judge whether a Chinese cultural expression is easy to understand, needs explanation or may be misread overseas.", fr:"Je peux juger si une expression culturelle chinoise est facile à comprendre, nécessite une explication ou risque d'être mal lue à l'étranger."}},
+  {id:"group_q3", text:{zh:"海外中国人可以帮助中国品牌把文化符号翻译成更适合当地市场的品牌语言。", en:"Overseas Chinese consumers can help Chinese brands translate cultural symbols into brand language better suited to local markets.", fr:"Les Chinois vivant à l'étranger peuvent aider les marques chinoises à traduire les symboles culturels en langage de marque adapté au marché local."}},
+  {id:"group_q4", text:{zh:"我认为中国品牌出海时需要对文化进行语境化解释，而不是直接把中国元素搬到海外广告里。", en:"I think Chinese brands need to contextualize culture overseas rather than directly move Chinese elements into overseas advertising.", fr:"Je pense que les marques chinoises doivent contextualiser la culture plutôt que transférer directement des éléments chinois dans la publicité internationale."}},
+  {id:"group_q5", text:{zh:"含蓄、现代、可解释的中国文化表达，比非常直白的民族符号更适合国际奢侈品牌传播。", en:"Subtle, modern and explainable Chinese cultural expression is more suitable for international luxury communication than very direct national symbols.", fr:"Une expression chinoise subtile, moderne et explicable convient mieux à la communication luxe internationale que des symboles nationaux très directs."}}
+ ],
+ foreign: [
+  {id:"group_q1", text:{zh:"即使我不了解中国文化背景，只要品牌表达足够清楚，我也能理解它想传达的核心意义。", en:"Even without deep knowledge of Chinese culture, I can understand the core meaning if the brand expression is clear enough.", fr:"Même sans connaissance approfondie de la culture chinoise, je peux comprendre le sens central si l'expression de marque est suffisamment claire."}},
+  {id:"group_q2", text:{zh:"如果品牌解释文化来源、工艺或故事，我会更容易把中国文化表达理解为奢侈品牌价值。", en:"If the brand explains the cultural source, craft or story, I can more easily understand Chinese cultural expression as luxury brand value.", fr:"Si la marque explique la source culturelle, l'artisanat ou l'histoire, je peux plus facilement comprendre l'expression culturelle chinoise comme valeur de marque luxe."}},
+  {id:"group_q3", text:{zh:"我更容易接受与现代设计、材质和使用场景结合的中国文化表达。", en:"I am more likely to accept Chinese cultural expression when it is connected with modern design, materials and use occasions.", fr:"J'accepte plus facilement l'expression culturelle chinoise lorsqu'elle est liée au design moderne, aux matières et aux usages."}},
+  {id:"group_q4", text:{zh:"过于直接的中国符号可能会让我觉得产品更像纪念品，而不是奢侈品。", en:"Very direct Chinese symbols may make the product feel more like a souvenir than a luxury product.", fr:"Des symboles chinois très directs peuvent donner au produit une impression de souvenir plutôt que de luxe."}},
+  {id:"group_q5", text:{zh:"如果中国文化表达让我感到真实、有故事、有品质，我会更愿意了解这个中国品牌。", en:"If Chinese cultural expression feels authentic, storied and high-quality, I am more willing to learn about the Chinese brand.", fr:"Si l'expression culturelle chinoise me semble authentique, narrative et qualitative, je suis plus disposé(e) à découvrir la marque chinoise."}}
+ ]
+};
+const state = {language:"zh", ranking_order: expressions.map(e=>e.id)};
+window.surveyState = state;
+let lang = "zh"; let index = 0; let dragId = null;
+const L = () => T[lang]; const tr = k => L()[k]; const tx = obj => obj[lang] || obj.en;
+function save(){
+ document.querySelectorAll("input,select,textarea").forEach(el=>{
+  if(el.type==="radio"){ if(el.checked) state[el.name]=el.value; }
+  else if(el.type==="checkbox"){ state[el.name] = [...document.querySelectorAll(`input[name="${el.name}"]:checked`)].map(x=>x.value); }
+  else state[el.name]=el.value;
+ });
+ updateRankingState();
+ updateConditionalFields();
+}
+function restore(){
+ Object.entries(state).forEach(([k,v])=>{
+  document.querySelectorAll(`[name="${k}"]`).forEach(el=>{
+   if(el.type==="radio") el.checked = el.value===v;
+   else if(el.type==="checkbox") el.checked = Array.isArray(v) && v.includes(el.value);
+   else el.value = v ?? "";
+  });
+ });
+ updateConditionalFields();
+}
+function opt(name,value,text){ return `<label class="option"><input type="radio" name="${name}" value="${value}" onchange="save();updateConditionalFields()"><span>${text}</span></label>`; }
+function scale(name,text){ return `<div class="scale-row"><div class="prompt">${text}</div><div class="scale">${[1,2,3,4,5,6,7].map(n=>`<label><input type="radio" name="${name}" value="${n}"><span>${n}</span></label>`).join("")}</div><div class="scale-help"><span>1 ${tr("low")}</span><span>7 ${tr("high")}</span></div></div>`; }
+function languageScreen(){ return `<section class="screen active"><div class="hero"><span class="badge">Pilot survey</span><h1>Chinese Luxury Brand Internationalization</h1><p>Culture-through-product branding test</p></div><h2 style="margin-top:22px">${T.zh.langTitle}</h2><div class="lang-grid">${["zh","en","fr"].map(l=>`<button class="lang" onclick="setLang('${l}')"><strong>${T[l].name}</strong><span>${T[l].subtitle}</span></button>`).join("")}</div></section>`; }
+function introScreen(){ return `<section class="screen"><span class="badge">${tr("time")}</span><h1>${tr("title")}</h1><p>${tr("subtitle")}</p><div class="logic"><p>${tr("logic")}</p></div></section>`; }
+function durationSelect(){ return `<select name="overseas_duration"><option></option>${durationOptions.map(o=>`<option value="${o.value}">${o[lang] || o.en}</option>`).join("")}</select>`; }
+function profileScreen(){ return `<section class="screen must-complete"><h2>${tr("profile")}</h2><div class="field"><label>${tr("group")}</label><div class="options">${opt("respondent_group","china",tr("china"))}${opt("respondent_group","overseas_chinese",tr("overseas"))}${opt("respondent_group","foreign",tr("foreign"))}</div></div><div class="field hidden" id="countryField"><label>${tr("country")}</label><input type="text" name="country"></div><div class="field hidden" id="overseasDurationField"><label>${tr("overseasDuration")}</label>${durationSelect()}</div><div class="field"><label>${tr("age")}</label><select name="age"><option></option><option>18-24</option><option>25-34</option><option>35-44</option><option>45+</option></select></div><div class="field"><label>${tr("luxury")}</label><div class="options">${opt("luxury_experience","yes",tr("yes"))}${opt("luxury_experience","no",tr("no"))}${opt("luxury_experience","unsure",tr("unsure"))}</div></div></section>`; }
+function imageTag(src,alt){ return src ? `<img src="${src}" alt="${alt}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove();">` : ""; }
+function mediaCard(e){ const m=e.media || {}; const caption=m.caption?tx(m.caption):tx(e.title); const url=m.source || ""; const openText=lang==="zh"?"打开视频/案例":lang==="fr"?"Ouvrir la vidéo / le cas":"Open video / case"; const clipAttr=m.clipEnd?` data-clip-end="${m.clipEnd}" ontimeupdate="limitClip(this)" src="${m.local}#t=0,${m.clipEnd}"`:` src="${m.local||""}"`; const localVideo=m.local?`<div class="scenario-media-frame"><video controls preload="metadata" playsinline${clipAttr}></video></div>`:""; const videoFrame=localVideo || `<div class="scenario-media-frame"><div class="video-poster"><div><div class="play-mark">▶</div><strong>${caption}</strong><br><a class="video-action" href="${url}" target="_blank" rel="noopener noreferrer">${openText}</a></div></div></div>`; const imageFrame=`<div class="scenario-media-frame">${imageTag(m.image,caption)}<div class="media-fallback">${caption}</div></div>`; return `<div class="scenario-media">${m.kind==="video"?videoFrame:imageFrame}<div class="media-caption">${caption}</div>${url?`<a class="media-source" href="${url}" target="_blank" rel="noopener noreferrer">${tr("sourceLabel")}: ${url}</a>`:""}</div>`; }
+function limitClip(video){ const end=Number(video.dataset.clipEnd||0); if(end && video.currentTime>=end){ video.pause(); video.currentTime=end; } }
+function brandCard(b){ const classic=tx(b.classic); return `<label class="brand"><input type="checkbox" name="known_brands" value="${b.name}"><div class="brand-logo">${imageTag(b.logo,b.name)}<span class="wordmark">${b.mark}</span></div><div class="brand-visual">${imageTag(b.image,classic)}<div class="visual-fallback">${classic}</div></div><div class="brand-name">${b.name}</div><div class="brand-classic">${classic}</div><a class="brand-source" href="${b.link}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${b.link}</a></label>`; }
+function brandScreen(){ return `<section class="screen brand-required"><h2>${tr("brands")}</h2><p class="muted">${tr("brandsHint")}</p><div class="brand-grid">${brands.map(brandCard).join("")}</div><div class="field"><label>${tr("otherBrands")}</label><input type="text" name="other_known_brands"></div></section>`; }
+function evalScreen(){ const qs=[["chinese_identity",tr("qChinese")],["understanding",tr("qUnderstand")],["translation_quality",tr("qTranslate")],["luxury_value",tr("qLuxury")],["authenticity",tr("qAuthentic")],["international_fit",tr("qInternational")],["interest",tr("qInterest")]]; return `<section class="screen must-complete"><h2>${tr("evalTitle")}</h2><p class="muted">${tr("evalHint")}</p>${expressions.map(e=>`<div class="scenario"><div class="scenario-head">${mediaCard(e)}<div class="scenario-copy"><div class="scenario-title">${tx(e.title)}</div><p>${tx(e.product)}</p></div></div>${qs.map(([k,text])=>scale(`${e.id}_${k}`,text)).join("")}</div>`).join("")}</section>`; }
+function channelScreen(){ return `<section class="screen checkbox-required"><h2>${tr("channels")}</h2><p class="muted">${tr("channelsHint")}</p><div class="channel-grid">${channels.map(c=>`<label class="channel"><input type="checkbox" name="effective_channels" value="${c.id}"><span>${c[lang] || c.en}</span></label>`).join("")}</div></section>`; }
+function rankingScreen(){ return `<section class="screen"><h2>${tr("ranking")}</h2><p class="muted">${tr("rankingHint")}</p><div id="sortable" class="sortable">${state.ranking_order.map(id=>rankCard(id)).join("")}</div></section>`; }
+function rankCard(id){ const e=expressions.find(x=>x.id===id); return `<div class="drag-card" draggable="true" data-id="${id}"><span class="handle">↕</span><div><strong>${tx(e.title)}</strong><br><span class="muted">${tx(e.product)}</span></div></div>`; }
+function groupSpecificContent(){ const group=state.respondent_group || "china"; const hintKey=group==="overseas_chinese"?"fHintOverseas":group==="foreign"?"fHintForeign":"fHintChina"; const qs=groupQuestionSets[group] || groupQuestionSets.china; return `<h2>${tr("accTitle")}</h2><p class="muted">${tr("accHint")}</p><div class="logic"><p>${tr(hintKey)}</p></div>${qs.map(q=>scale(q.id,tx(q.text))).join("")}`; }
+function groupSpecificScreen(){ return `<section class="screen group-specific must-complete">${groupSpecificContent()}</section>`; }
+function updateGroupSpecificScreen(){ const screen=document.querySelector(".group-specific"); if(screen) screen.innerHTML=groupSpecificContent(); }
+function finalScreen(){ return `<section class="screen"><h2>${tr("finalTitle")}</h2><div class="field"><label>${tr("finalOpen")}</label><textarea id="finalRecommendation" name="final_recommendation"></textarea><div class="ai-tools"><button type="button" class="secondary" onclick="suggestFinalAnswer()">${tr("aiHelp")}</button><button type="button" class="ghost hidden" id="insertAiBtn" onclick="insertAiSuggestion()">${tr("aiInsert")}</button></div><div class="mini-note">${tr("aiNote")}</div><div id="aiSuggestion" class="ai-suggestion hidden"></div></div></section>`; }
+function thanksScreen(){ return `<section class="screen"><h2>${tr("submit")}</h2><p class="muted">${tr("submitting")}</p><div id="status" class="status"></div><div class="btns"><button class="primary" onclick="submitResponse()">${tr("submit")}</button></div></section>`; }
+function build(){ return [languageScreen(),introScreen(),profileScreen(),brandScreen(),evalScreen(),channelScreen(),rankingScreen(),groupSpecificScreen(),finalScreen(),thanksScreen()]; }
+function setLang(l){ lang=l; state.language=l; render(); show(1); }
+function render(){ document.getElementById("app").innerHTML = build().join("") + `<div class="btns" id="nav"><button class="secondary" onclick="prev()">${tr("back")}</button><button class="primary" onclick="next()">${tr("next")}</button><button class="ghost" onclick="resetSurvey()">${tr("reset")}</button></div>`; restore(); bindDrag(); }
+function visibleScreens(){ return [...document.querySelectorAll(".screen")]; }
+function show(n){ save(); updateGroupSpecificScreen(); const screens=visibleScreens(); index=Math.max(0,Math.min(n,screens.length-1)); document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active")); screens[index].classList.add("active"); document.getElementById("progress").style.width=Math.round((index+1)/screens.length*100)+"%"; document.getElementById("stepLabel").textContent=`${tr("step")} ${index+1} / ${screens.length}`; document.getElementById("timeLabel").textContent=tr("time"); const nav=document.getElementById("nav"); nav.style.display=index===0?"none":"flex"; nav.querySelector(".secondary").style.visibility=index<=1?"hidden":"visible"; nav.querySelector(".primary").textContent=index===screens.length-1?tr("finish"):tr("next"); restore(); bindDrag(); window.scrollTo({top:0,behavior:"smooth"}); }
+function showValidation(screen,msg){ let box=screen.querySelector(".validation-message"); if(!box){ box=document.createElement("div"); box.className="validation-message"; screen.appendChild(box); } box.textContent=msg; box.scrollIntoView({behavior:"smooth",block:"center"}); }
+function clearValidation(screen){ screen.querySelectorAll(".validation-message").forEach(x=>x.remove()); screen.querySelectorAll(".invalid-field").forEach(x=>x.classList.remove("invalid-field")); }
+function isVisible(el){ return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length); }
+function markInvalid(el){ const field=el.closest(".field,.scale-row,.scenario,.channel-grid,.brand-grid") || el; field.classList.add("invalid-field"); }
+function validateCurrentScreen(){ const screens=visibleScreens(); const screen=screens[index]; if(!screen || index===0) return true; clearValidation(screen); save(); if(screen.classList.contains("brand-required")){ const hasBrand=[...screen.querySelectorAll('input[name="known_brands"]:checked')].length>0; const other=(screen.querySelector('input[name="other_known_brands"]')?.value||"").trim(); if(!hasBrand && !other){ markInvalid(screen.querySelector(".brand-grid")||screen); showValidation(screen,tr("validationBrand")); return false; } return true; } if(screen.classList.contains("checkbox-required")){ const checked=[...screen.querySelectorAll('input[type="checkbox"]:checked')].filter(isVisible); if(!checked.length){ markInvalid(screen.querySelector(".channel-grid")||screen); showValidation(screen,tr("validationRequired")); return false; } return true; } if(screen.classList.contains("must-complete")){ const names=[...new Set([...screen.querySelectorAll("input,select,textarea")].filter(el=>isVisible(el) && el.name).map(el=>el.name))]; for(const name of names){ const els=[...screen.querySelectorAll(`[name="${name}"]`)].filter(isVisible); if(!els.length) continue; const first=els[0]; let ok=true; if(first.type==="radio" || first.type==="checkbox") ok=els.some(el=>el.checked); else ok=(first.value||"").trim()!==""; if(!ok){ markInvalid(first); showValidation(screen,tr("validationRequired")); return false; } } return true; } return true; }
+function next(){ save(); if(!validateCurrentScreen()) return; show(index+1); }
+function prev(){ save(); show(index-1); }
+function resetSurvey(){ if(confirm("Reset all answers?")){ Object.keys(state).forEach(k=>delete state[k]); state.language=lang; state.ranking_order=expressions.map(e=>e.id); show(1); } }
+function updateConditionalFields(){ const country=document.getElementById("countryField"); const duration=document.getElementById("overseasDurationField"); const needsCountry=state.respondent_group==="overseas_chinese" || state.respondent_group==="foreign"; if(country) country.classList.toggle("hidden", !needsCountry); if(duration) duration.classList.toggle("hidden", state.respondent_group!=="overseas_chinese"); }
+function bindDrag(){ const box=document.getElementById("sortable"); if(!box) return; box.querySelectorAll(".drag-card").forEach(card=>{ card.addEventListener("dragstart",()=>{dragId=card.dataset.id; card.classList.add("dragging");}); card.addEventListener("dragend",()=>{dragId=null; card.classList.remove("dragging"); updateRankingState();}); card.addEventListener("dragover",e=>e.preventDefault()); card.addEventListener("drop",e=>{e.preventDefault(); if(!dragId || dragId===card.dataset.id) return; const dragging=box.querySelector(`[data-id="${dragId}"]`); box.insertBefore(dragging, card); updateRankingState();}); }); }
+function updateRankingState(){ const box=document.getElementById("sortable"); if(box) state.ranking_order=[...box.querySelectorAll(".drag-card")].map(x=>x.dataset.id); }
+function flatData(){ save(); return {...state, submitted_at_client:new Date().toISOString(), user_agent:navigator.userAgent}; }
+function num(v){ return v===""||v===undefined?null:Number(v); }
+async function suggestFinalAnswer(){ save(); const box=document.getElementById("aiSuggestion"); const insert=document.getElementById("insertAiBtn"); if(!box) return; box.classList.remove("hidden"); box.textContent=tr("aiThinking"); let suggestion=""; if(AI_HELP_ENDPOINT){ try{ const res=await fetch(AI_HELP_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${SUPABASE_ANON_KEY}`},body:JSON.stringify(flatData())}); const data=await res.json(); suggestion=data.suggestion || ""; }catch(e){ suggestion=""; } } if(!suggestion) suggestion=localFinalSuggestion(); state.final_ai_suggestion=suggestion; box.textContent=suggestion; if(insert) insert.classList.remove("hidden"); }
+function localFinalSuggestion(){ const group=state.respondent_group || "china"; const topId=(state.ranking_order||[])[0]; const top=expressions.find(e=>e.id===topId); const topText=top?tx(top.title):""; const known=Array.isArray(state.known_brands)&&state.known_brands.length?state.known_brands.slice(0,2).join(", "):""; if(lang==="en") return `My suggestion is that Chinese luxury brands should not simply copy traditional symbols into overseas advertising. They should start from a real cultural source${topText?`, such as ${topText}`:""}, then translate it through product quality, materials, craftsmanship, brand story and clear visual explanation. This would make the Chinese identity visible but still understandable for international consumers.${known?` Brands such as ${known} could make this clearer by connecting the product example with a short cultural explanation.`:""}`; if(lang==="fr") return `Ma recommandation serait que les marques chinoises de luxe ne transfèrent pas simplement des symboles traditionnels dans leur communication internationale. Elles devraient partir d'une source culturelle réelle${topText?`, par exemple ${topText}`:""}, puis la traduire par la qualité du produit, les matières, le savoir-faire, l'histoire de marque et une explication visuelle claire. Cela permettrait de garder une identité chinoise visible tout en restant compréhensible pour les consommateurs internationaux.${known?` Des marques comme ${known} pourraient rendre ce lien plus clair avec un exemple produit et une courte explication culturelle.`:""}`; return `我的建议是，中国奢侈/高端品牌出海时不要只是把传统符号直接放进广告里，而应该先找到真实的文化来源${topText?`，例如“${topText}”`:""}，再通过产品品质、材质、工艺、品牌故事和清晰的视觉解释进行转译。这样既能保留中国身份，也能让国际消费者理解它为什么是高级的、真实的、有品牌价值的。${known?`例如 ${known} 这类品牌，可以把具体产品和背后的文化含义连接得更清楚。`:""}`; }
+function insertAiSuggestion(){ const textarea=document.getElementById("finalRecommendation"); if(!textarea || !state.final_ai_suggestion) return; textarea.value=state.final_ai_suggestion; state.final_recommendation=state.final_ai_suggestion; state.final_ai_used=true; }
+function rowForSupabase(){ const d=flatData(); const row={language:d.language, respondent_group:d.respondent_group||null, country:(d.respondent_group==="overseas_chinese"||d.respondent_group==="foreign")?(d.country||null):null, overseas_duration:d.respondent_group==="overseas_chinese"?(d.overseas_duration||null):null, age:d.age||null, luxury_experience:d.luxury_experience||null, known_brands:d.known_brands||[], other_known_brands:d.other_known_brands||null, effective_channels:d.effective_channels||[], ranking_order:d.ranking_order||[], group_q1:num(d.group_q1), group_q2:num(d.group_q2), group_q3:num(d.group_q3), group_q4:num(d.group_q4), group_q5:num(d.group_q5), final_recommendation:d.final_recommendation||null, final_ai_suggestion:d.final_ai_suggestion||null, final_ai_used:!!d.final_ai_used, response_json:d}; expressions.forEach(e=>["understanding","chinese_identity","translation_quality","luxury_value","authenticity","international_fit","interest"].forEach(k=>row[`${e.id}_${k}`]=num(d[`${e.id}_${k}`]))); ["acc_chinese_culture_familiarity","acc_host_market_understanding","acc_foreigner_readability","acc_need_translation","acc_prefer_subtle"].forEach(k=>row[k]=num(d[k])); return row; }
+function setStatus(kind,msg){ const el=document.getElementById("status"); if(!el) return; el.className="status "+kind; el.textContent=msg; }
+async function submitResponse(){ setStatus("ok",tr("submitting")); const {error}=await supabaseClient.from("luxury_survey_responses").insert(rowForSupabase()); if(error) setStatus("err",tr("failed")+error.message); else setStatus("ok",tr("saved")); }
+render(); show(0);
+</script>
+</body>
+</html>
