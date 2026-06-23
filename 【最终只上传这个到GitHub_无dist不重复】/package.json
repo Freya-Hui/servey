@@ -1,8 +1,0 @@
-{
-  "name": "chinese-luxury-branding-survey",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "rm -rf dist && mkdir -p dist && cp index.html dist/index.html && cp health.html dist/health.html && cp -R media dist/media"
-  }
-}
